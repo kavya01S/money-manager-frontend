@@ -56,6 +56,7 @@ const Dashboard = () => {
     }
   };
 
+  // --- ROBUST FILTER LOGIC ---
   const filteredTransactions = useMemo(() => {
     const result = transactions.filter((t) => {
       const matchDivision =
@@ -63,16 +64,22 @@ const Dashboard = () => {
       const matchType = filters.type === "All" || t.type === filters.type;
       const matchCategory =
         filters.category === "All" || t.category === filters.category;
+
       let matchDate = true;
       if (filters.startDate && filters.endDate) {
+        // Compare YYYY-MM-DD strings directly
         const tDate = t.date.split("T")[0];
         matchDate = tDate >= filters.startDate && tDate <= filters.endDate;
       }
+
       return matchDivision && matchType && matchCategory && matchDate;
     });
+
+    // Sort Newest First
     return result.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [transactions, filters]);
 
+  // --- STATS ---
   const { totalBalance, income, expense } = useMemo(() => {
     let inc = 0,
       exp = 0;
@@ -83,7 +90,6 @@ const Dashboard = () => {
   }, [filteredTransactions]);
 
   const categories = [...new Set(transactions.map((t) => t.category))];
-
   const handleFilterChange = (e) =>
     setFilters({ ...filters, [e.target.name]: e.target.value });
   const clearFilters = () =>
@@ -99,7 +105,7 @@ const Dashboard = () => {
     navigate("/login");
   };
 
-  const handleDelete = async (id, date) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Delete this transaction?")) {
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
@@ -142,8 +148,8 @@ const Dashboard = () => {
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `fintrack_export.csv`);
+    link.href = url;
+    link.download = `fintrack_export.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -185,12 +191,9 @@ const Dashboard = () => {
       </nav>
 
       <main className="px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
+        {/* Stats */}
         <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative p-6 overflow-hidden shadow-lg bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-blue-500/20"
-          >
+          <div className="relative p-6 overflow-hidden shadow-lg bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-blue-500/20">
             <div className="absolute top-0 right-0 p-4 opacity-10">
               <Wallet className="w-24 h-24 text-white" />
             </div>
@@ -200,61 +203,47 @@ const Dashboard = () => {
             <h3 className="text-4xl font-bold text-white">
               ₹ {totalBalance.toLocaleString()}
             </h3>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="p-6 border bg-slate-900 border-slate-800 rounded-2xl"
-          >
+          </div>
+          <div className="p-6 border bg-slate-900 border-slate-800 rounded-2xl">
             <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-emerald-500/10 rounded text-emerald-500">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-              <span className="text-sm text-slate-400">Total Income</span>
+              <TrendingUp className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm text-slate-400">Income</span>
             </div>
             <h3 className="text-2xl font-bold text-white">
               ₹ {income.toLocaleString()}
             </h3>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="p-6 border bg-slate-900 border-slate-800 rounded-2xl"
-          >
+          </div>
+          <div className="p-6 border bg-slate-900 border-slate-800 rounded-2xl">
             <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-red-500/10 rounded text-red-500">
-                <TrendingDown className="w-4 h-4" />
-              </div>
-              <span className="text-sm text-slate-400">Total Expense</span>
+              <TrendingDown className="w-4 h-4 text-red-500" />
+              <span className="text-sm text-slate-400">Expense</span>
             </div>
             <h3 className="text-2xl font-bold text-white">
               ₹ {expense.toLocaleString()}
             </h3>
-          </motion.div>
+          </div>
         </div>
 
+        {/* Charts */}
         <div className="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-2">
           <DashboardChart transactions={filteredTransactions} />
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* --- SIMPLE FLEX FILTER BAR --- */}
+        {/* --- GRID LAYOUT FILTER BAR (The Fix) --- */}
         <div className="p-4 mb-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
-          <div className="flex flex-col items-center justify-between gap-4 lg:flex-row">
-            <div className="flex flex-wrap items-center w-full gap-2 lg:w-auto">
-              <div className="flex items-center gap-2 mr-2 text-slate-400">
-                <Filter className="w-4 h-4" />
-                <span className="hidden text-sm font-medium md:block">
-                  Filters:
-                </span>
+          <div className="flex flex-col items-center justify-between gap-4 xl:flex-row">
+            {/* Filters Row */}
+            <div className="grid w-full grid-cols-2 gap-2 md:grid-cols-5 xl:w-auto">
+              <div className="flex items-center col-span-2 gap-2 text-slate-400 md:col-span-1">
+                <Filter className="w-4 h-4" />{" "}
+                <span className="font-medium">Filters:</span>
               </div>
               <select
                 name="division"
                 value={filters.division}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-2 text-sm text-white border rounded-lg bg-slate-700 border-slate-600"
               >
                 <option value="All">All Divisions</option>
                 <option value="Office">Office</option>
@@ -264,7 +253,7 @@ const Dashboard = () => {
                 name="type"
                 value={filters.type}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-2 text-sm text-white border rounded-lg bg-slate-700 border-slate-600"
               >
                 <option value="All">All Types</option>
                 <option value="income">Income</option>
@@ -274,7 +263,7 @@ const Dashboard = () => {
                 name="category"
                 value={filters.category}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-2 text-sm text-white border rounded-lg bg-slate-700 border-slate-600"
               >
                 <option value="All">All Categories</option>
                 {categories.map((c) => (
@@ -285,19 +274,21 @@ const Dashboard = () => {
               </select>
               <button
                 onClick={clearFilters}
-                className="flex items-center justify-center w-10 h-10 border rounded-lg bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-300"
+                className="h-10 text-white border rounded-lg bg-slate-700 hover:bg-slate-600 border-slate-600"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className="w-4 h-4 mx-auto" />
               </button>
             </div>
-            <div className="flex flex-wrap items-center justify-end w-full gap-2 lg:w-auto">
-              <div className="flex items-center gap-1 p-1 border rounded-lg bg-slate-900 border-slate-600">
+
+            {/* Actions Row */}
+            <div className="flex flex-wrap items-center justify-end w-full gap-3 xl:w-auto">
+              <div className="flex items-center gap-2 p-1 border rounded-lg bg-slate-900 border-slate-600">
                 <input
                   type="date"
                   name="startDate"
                   value={filters.startDate}
                   onChange={handleFilterChange}
-                  className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
+                  className="h-8 px-2 text-sm text-white bg-transparent outline-none"
                 />
                 <span className="text-slate-500">-</span>
                 <input
@@ -305,25 +296,26 @@ const Dashboard = () => {
                   name="endDate"
                   value={filters.endDate}
                   onChange={handleFilterChange}
-                  className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
+                  className="h-8 px-2 text-sm text-white bg-transparent outline-none"
                 />
               </div>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700"
+                className="flex items-center h-10 gap-2 px-4 font-medium text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700"
               >
-                <Plus className="w-4 h-4" /> <span>Add</span>
+                <Plus className="w-4 h-4" /> Add
               </button>
               <button
                 onClick={handleExport}
-                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700"
+                className="flex items-center h-10 gap-2 px-4 font-medium text-white rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700"
               >
-                <Download className="w-4 h-4" /> <span>CSV</span>
+                <Download className="w-4 h-4" /> CSV
               </button>
             </div>
           </div>
         </div>
 
+        {/* Transactions List */}
         <div className="p-6 border bg-slate-900/50 backdrop-blur-sm border-slate-800 rounded-2xl">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-white">
@@ -332,22 +324,14 @@ const Dashboard = () => {
           </div>
           <div className="space-y-4">
             {filteredTransactions.length === 0 ? (
-              <div className="py-12 text-center text-slate-500">
-                <p>No transactions found.</p>
-                <button
-                  onClick={clearFilters}
-                  className="mt-2 text-sm text-blue-500 hover:underline"
-                >
-                  Clear filters
-                </button>
-              </div>
+              <p className="py-10 text-center text-slate-500">
+                No transactions found.
+              </p>
             ) : (
               filteredTransactions.map((t) => (
-                <motion.div
+                <div
                   key={t._id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center justify-between p-4 border border-transparent bg-slate-800/50 hover:border-slate-700 hover:bg-slate-800 rounded-xl group"
+                  className="flex items-center justify-between p-4 border border-transparent bg-slate-800/50 rounded-xl hover:border-slate-700"
                 >
                   <div className="flex items-center gap-4">
                     <div
@@ -361,37 +345,31 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h4 className="font-bold text-white">{t.category}</h4>
-                      <p className="flex items-center gap-2 text-sm text-slate-400">
-                        <span>{new Date(t.date).toLocaleDateString()}</span>
-                        {t.description && (
-                          <span className="text-slate-600">
-                            • {t.description}
-                          </span>
-                        )}
+                      <p className="text-sm text-slate-400">
+                        {new Date(t.date).toLocaleDateString()} •{" "}
+                        {t.description}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p
                         className={`text-lg font-bold ${t.type === "income" ? "text-emerald-400" : "text-red-400"}`}
                       >
                         {t.type === "income" ? "+" : "-"} ₹{t.amount}
                       </p>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${t.division === "Office" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"}`}
-                      >
+                      <span className="text-xs text-slate-500">
                         {t.division}
                       </span>
                     </div>
                     <button
-                      onClick={() => handleDelete(t._id, t.date)}
-                      className="p-2 rounded-lg opacity-0 text-slate-600 hover:text-red-500 hover:bg-red-500/10 group-hover:opacity-100"
+                      onClick={() => handleDelete(t._id)}
+                      className="text-slate-600 hover:text-red-500"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
-                </motion.div>
+                </div>
               ))
             )}
           </div>
