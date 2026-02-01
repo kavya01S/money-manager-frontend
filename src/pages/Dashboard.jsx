@@ -141,7 +141,25 @@ const Dashboard = () => {
       }
     }
   };
+  const handleExport = () => {
+    // 1. Create CSV Header
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Date,Description,Category,Amount,Type\n";
 
+    // 2. Map Data Rows
+    transactions.forEach((t) => {
+      const row = `${t.date.split("T")[0]},${t.description},${t.category},${t.amount},${t.type}`;
+      csvContent += row + "\n";
+    });
+
+    // 3. Trigger Download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "my_financial_report.csv");
+    document.body.appendChild(link);
+    link.click();
+  };
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen text-blue-500 bg-slate-950">
@@ -329,6 +347,12 @@ const Dashboard = () => {
             className="flex items-center gap-2 px-4 py-2 font-medium text-white transition-colors bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 shadow-blue-500/20 whitespace-nowrap"
           >
             <Plus className="w-4 h-4" /> Add New
+          </button>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
+          >
+            <span>📊</span> Export CSV
           </button>
         </div>
 
