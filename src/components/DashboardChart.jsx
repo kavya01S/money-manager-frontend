@@ -10,69 +10,76 @@ import {
 } from "recharts";
 
 const DashboardChart = ({ transactions }) => {
-  const [timeRange, setTimeRange] = useState("week"); // week, month, year
+  const [timeRange, setTimeRange] = useState("month"); // week, month, year
 
   // Group data based on time range
   const chartData = useMemo(() => {
     if (!transactions.length) return [];
 
     const dataMap = {};
-    const today = new Date();
 
     transactions.forEach((t) => {
       const date = new Date(t.date);
       const amount = t.amount;
 
-      // Filter Logic
+      // --- LOGIC CHANGE: Trust the Parent Filter ---
+      // We removed the "if (date === today)" checks.
+      // Now it simply groups whatever data passes through the filter.
+
       if (timeRange === "week") {
-        const diffTime = Math.abs(today - date);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays <= 7) {
-          // Key format: "YYYY-MM-DD" so we can sort easily later
-          const dayKey = date.toISOString().split("T")[0];
-          dataMap[dayKey] = (dataMap[dayKey] || 0) + amount;
-        }
+        // Group by Day of Week (0=Sun, 1=Mon...)
+        // This ensures correct sorting order
+        const dayIdx = date.getDay();
+        dataMap[dayIdx] = (dataMap[dayIdx] || 0) + amount;
       } else if (timeRange === "month") {
-        if (
-          date.getMonth() === today.getMonth() &&
-          date.getFullYear() === today.getFullYear()
-        ) {
-          const dayNum = date.getDate(); // Key: 1, 2, 3...
-          dataMap[dayNum] = (dataMap[dayNum] || 0) + amount;
-        }
+        // Group by Date (1, 2, 3... 31)
+        // Perfect for your "Jan 1 - Jan 31" filter
+        const dayNum = date.getDate();
+        dataMap[dayNum] = (dataMap[dayNum] || 0) + amount;
       } else if (timeRange === "year") {
-        if (date.getFullYear() === today.getFullYear()) {
-          // Key: 0 (Jan), 1 (Feb)... easier to sort than strings
-          const monthIdx = date.getMonth();
-          dataMap[monthIdx] = (dataMap[monthIdx] || 0) + amount;
-        }
+        // Group by Month (0=Jan, 1=Feb...)
+        const monthIdx = date.getMonth();
+        dataMap[monthIdx] = (dataMap[monthIdx] || 0) + amount;
       }
     });
 
-    // Convert Object to Array and SORT IT properly
-    return (
-      Object.keys(dataMap)
-        .map((key) => {
-          // Convert keys back to readable labels for the chart
-          let label = key;
-          if (timeRange === "week") {
-            const d = new Date(key);
-            label = d.toLocaleDateString("en-US", { weekday: "short" });
-          } else if (timeRange === "year") {
-            const d = new Date();
-            d.setMonth(key);
-            label = d.toLocaleDateString("en-US", { month: "short" });
-          }
+    // Convert Object to Array and SORT
+    return Object.keys(dataMap)
+      .map((key) => {
+        const numKey = parseInt(key);
+        let label = key;
 
-          return {
-            originalKey: key, // Keep original for sorting
-            name: label,
-            amount: dataMap[key],
-          };
-        })
-        // The sort function: compares keys (Dates or Numbers)
-        .sort((a, b) => (a.originalKey > b.originalKey ? 1 : -1))
-    );
+        // Create readable labels based on the numeric keys
+        if (timeRange === "week") {
+          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          label = days[numKey];
+        } else if (timeRange === "month") {
+          label = `Day ${numKey}`;
+        } else if (timeRange === "year") {
+          const months = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          label = months[numKey];
+        }
+
+        return {
+          name: label,
+          amount: dataMap[key],
+          sortKey: numKey,
+        };
+      })
+      .sort((a, b) => a.sortKey - b.sortKey); // Numerical Sort (Jan before Feb, 1 before 2)
   }, [transactions, timeRange]);
 
   return (
