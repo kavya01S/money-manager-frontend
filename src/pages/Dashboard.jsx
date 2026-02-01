@@ -69,7 +69,6 @@ const Dashboard = () => {
 
       let matchDate = true;
       if (filters.startDate && filters.endDate) {
-        // Robust Date Comparison (String based to avoid Timezone issues)
         const tDate = t.date.split("T")[0];
         matchDate = tDate >= filters.startDate && tDate <= filters.endDate;
       }
@@ -77,7 +76,6 @@ const Dashboard = () => {
       return matchDivision && matchType && matchCategory && matchDate;
     });
 
-    // SORT: Newest First
     return result.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [transactions, filters]);
 
@@ -135,9 +133,12 @@ const Dashboard = () => {
     }
   };
 
-  // --- FIXED CSV EXPORT ---
+  // --- CSV EXPORT (Blob Method) ---
   const handleExport = () => {
-    // 1. Headers
+    if (filteredTransactions.length === 0) {
+      toast.error("No data to export!");
+      return;
+    }
     const headers = [
       "Date",
       "Description",
@@ -146,29 +147,27 @@ const Dashboard = () => {
       "Type",
       "Division",
     ];
-
-    // 2. Data Rows (With quote escaping for descriptions)
     const rows = filteredTransactions.map((t) => [
       t.date.split("T")[0],
-      `"${(t.description || "").replace(/"/g, '""')}"`, // Handle commas/quotes in description
+      `"${(t.description || "").replace(/"/g, '""')}"`,
       t.category,
       t.amount,
       t.type,
       t.division,
     ]);
-
-    // 3. Construct CSV
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-
-    // 4. Download
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `fintrack_report_${new Date().toISOString().split("T")[0]}.csv`,
+      `fintrack_export_${new Date().toISOString().split("T")[0]}.csv`,
     );
     document.body.appendChild(link);
     link.click();
@@ -272,22 +271,22 @@ const Dashboard = () => {
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* --- FILTER & ACTION BAR --- */}
+        {/* --- GRID BASED FILTER BAR (Sorted Out) --- */}
         <div className="p-4 mb-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
-          <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 mr-2 text-slate-400">
-                <Filter className="w-4 h-4" />
-                <span className="hidden text-sm font-medium md:block">
-                  Filters:
-                </span>
-              </div>
+          <div className="grid items-center grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {/* 1. Filter Label */}
+            <div className="flex items-center gap-2 text-slate-400 md:col-span-2 lg:col-span-1">
+              <Filter className="w-4 h-4" />
+              <span className="text-sm font-medium">Filter Transactions:</span>
+            </div>
 
+            {/* 2. Controls Grid */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:col-span-2 lg:col-span-3">
               <select
                 name="division"
                 value={filters.division}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none cursor-pointer bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-2 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="All">All Divisions</option>
                 <option value="Office">Office</option>
@@ -298,7 +297,7 @@ const Dashboard = () => {
                 name="type"
                 value={filters.type}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none cursor-pointer bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-2 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="All">All Types</option>
                 <option value="income">Income</option>
@@ -309,7 +308,7 @@ const Dashboard = () => {
                 name="category"
                 value={filters.category}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none cursor-pointer bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-2 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="All">All Categories</option>
                 {categories.map((c) => (
@@ -319,13 +318,26 @@ const Dashboard = () => {
                 ))}
               </select>
 
-              <div className="flex items-center gap-2 p-1 border rounded-lg bg-slate-900 border-slate-600">
+              <button
+                onClick={clearFilters}
+                className="flex items-center justify-center w-full h-10 transition-colors border rounded-lg bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-300"
+                title="Reset"
+              >
+                <RefreshCw className="w-4 h-4" />{" "}
+                <span className="ml-2 text-xs sm:hidden">Reset</span>
+              </button>
+            </div>
+
+            {/* 3. Action Buttons (Right Aligned) */}
+            <div className="flex justify-end gap-2 md:col-span-2 lg:col-span-1">
+              {/* Date Inputs (Compact for Desktop) */}
+              <div className="flex items-center hidden gap-1 p-1 mr-2 border rounded-lg bg-slate-900 border-slate-600 xl:flex">
                 <input
                   type="date"
                   name="startDate"
                   value={filters.startDate}
                   onChange={handleFilterChange}
-                  className="h-8 px-2 text-sm bg-transparent outline-none cursor-pointer text-slate-200"
+                  className="w-24 h-8 px-1 text-xs bg-transparent outline-none text-slate-200"
                 />
                 <span className="text-slate-500">-</span>
                 <input
@@ -333,33 +345,42 @@ const Dashboard = () => {
                   name="endDate"
                   value={filters.endDate}
                   onChange={handleFilterChange}
-                  className="h-8 px-2 text-sm bg-transparent outline-none cursor-pointer text-slate-200"
+                  className="w-24 h-8 px-1 text-xs bg-transparent outline-none text-slate-200"
                 />
               </div>
 
               <button
-                onClick={clearFilters}
-                className="flex items-center justify-center w-10 h-10 transition-colors border rounded-lg bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-300"
-                title="Reset Filters"
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center h-10 gap-2 px-3 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 active:scale-95"
               >
-                <RefreshCw className="w-4 h-4" />
+                <Plus className="w-4 h-4" /> <span>Add</span>
+              </button>
+              <button
+                onClick={handleExport}
+                className="flex items-center h-10 gap-2 px-3 text-sm font-medium text-white rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95"
+              >
+                <Download className="w-4 h-4" /> <span>CSV</span>
               </button>
             </div>
 
-            <div className="flex justify-end w-full gap-3 mt-2 lg:w-auto lg:mt-0">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 shadow-blue-500/20 active:scale-95 whitespace-nowrap"
-              >
-                <Plus className="w-4 h-4" /> <span>Add New</span>
-              </button>
-
-              <button
-                onClick={handleExport}
-                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 active:scale-95 whitespace-nowrap"
-              >
-                <Download className="w-4 h-4" /> <span>Export CSV</span>
-              </button>
+            {/* Mobile Date Inputs (Visible only on smaller screens) */}
+            <div className="flex items-center justify-center gap-2 p-2 border rounded-lg bg-slate-900 border-slate-600 md:col-span-2 xl:hidden">
+              <span className="text-xs text-slate-400">Date Range:</span>
+              <input
+                type="date"
+                name="startDate"
+                value={filters.startDate}
+                onChange={handleFilterChange}
+                className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
+              />
+              <span className="text-slate-500">-</span>
+              <input
+                type="date"
+                name="endDate"
+                value={filters.endDate}
+                onChange={handleFilterChange}
+                className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
+              />
             </div>
           </div>
         </div>
@@ -413,7 +434,6 @@ const Dashboard = () => {
                       </p>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <p
