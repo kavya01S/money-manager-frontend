@@ -58,9 +58,9 @@ const Dashboard = () => {
     }
   };
 
-  // --- FILTER LOGIC ---
+  // --- FILTER & SORT LOGIC ---
   const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
+    const result = transactions.filter((t) => {
       const matchDivision =
         filters.division === "All" || t.division === filters.division;
       const matchType = filters.type === "All" || t.type === filters.type;
@@ -69,7 +69,7 @@ const Dashboard = () => {
 
       let matchDate = true;
       if (filters.startDate && filters.endDate) {
-        // Set time to midnight for accurate date comparison
+        // Normalize time to midnight/end-of-day for accurate range check
         const tDate = new Date(t.date).setHours(0, 0, 0, 0);
         const start = new Date(filters.startDate).setHours(0, 0, 0, 0);
         const end = new Date(filters.endDate).setHours(23, 59, 59, 999);
@@ -78,6 +78,9 @@ const Dashboard = () => {
 
       return matchDivision && matchType && matchCategory && matchDate;
     });
+
+    // EXPLICT SORT: Newest First
+    return result.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [transactions, filters]);
 
   // --- STATS CALCULATION ---
@@ -139,7 +142,7 @@ const Dashboard = () => {
     csvContent += "Date,Description,Category,Amount,Type,Division\n";
 
     filteredTransactions.forEach((t) => {
-      const row = `${t.date.split("T")[0]},${t.description},${t.category},${t.amount},${t.type},${t.division}`;
+      const row = `${t.date.split("T")[0]},${t.description || ""},${t.category},${t.amount},${t.type},${t.division}`;
       csvContent += row + "\n";
     });
 
@@ -188,7 +191,7 @@ const Dashboard = () => {
       </nav>
 
       <main className="px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
-        {/* Stats Cards */}
+        {/* Stats Row */}
         <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -248,12 +251,11 @@ const Dashboard = () => {
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* --- IMPROVED FILTER & ACTION BAR --- */}
-        {/* Uses Grid for perfect responsiveness and alignment */}
+        {/* --- PROFESSIONAL FILTER TOOLBAR --- */}
         <div className="p-4 mb-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
-          <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
-            {/* Filters Group */}
-            <div className="flex flex-wrap items-center w-full gap-3 lg:w-auto">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            {/* Left Side: Filter Controls */}
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2 mr-2 text-slate-400">
                 <Filter className="w-4 h-4" />
                 <span className="hidden text-sm font-medium md:block">
@@ -261,11 +263,12 @@ const Dashboard = () => {
                 </span>
               </div>
 
+              {/* Standard Height Inputs (h-10) */}
               <select
                 name="division"
                 value={filters.division}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-3 text-sm border rounded-lg outline-none cursor-pointer bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500 hover:bg-slate-600"
               >
                 <option value="All">All Divisions</option>
                 <option value="Office">Office</option>
@@ -276,7 +279,7 @@ const Dashboard = () => {
                 name="type"
                 value={filters.type}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-3 text-sm border rounded-lg outline-none cursor-pointer bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500 hover:bg-slate-600"
               >
                 <option value="All">All Types</option>
                 <option value="income">Income</option>
@@ -287,7 +290,7 @@ const Dashboard = () => {
                 name="category"
                 value={filters.category}
                 onChange={handleFilterChange}
-                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-3 text-sm border rounded-lg outline-none cursor-pointer bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500 hover:bg-slate-600"
               >
                 <option value="All">All Categories</option>
                 {categories.map((c) => (
@@ -297,13 +300,13 @@ const Dashboard = () => {
                 ))}
               </select>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 p-1 border rounded-lg bg-slate-900 border-slate-600">
                 <input
                   type="date"
                   name="startDate"
                   value={filters.startDate}
                   onChange={handleFilterChange}
-                  className="w-32 h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                  className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
                 />
                 <span className="text-slate-500">-</span>
                 <input
@@ -311,7 +314,7 @@ const Dashboard = () => {
                   name="endDate"
                   value={filters.endDate}
                   onChange={handleFilterChange}
-                  className="w-32 h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                  className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
                 />
               </div>
 
@@ -324,18 +327,18 @@ const Dashboard = () => {
               </button>
             </div>
 
-            {/* Action Buttons Group (Right Aligned) */}
-            <div className="flex justify-end w-full gap-3 lg:w-auto">
+            {/* Right Side: Primary Actions */}
+            <div className="flex items-center gap-3 mt-2 lg:mt-0 lg:ml-auto">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 shadow-blue-500/20 active:scale-95"
+                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 shadow-blue-500/20 active:scale-95 whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" /> <span>Add New</span>
               </button>
 
               <button
                 onClick={handleExport}
-                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 active:scale-95"
+                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 active:scale-95 whitespace-nowrap"
               >
                 <Download className="w-4 h-4" /> <span>Export CSV</span>
               </button>
