@@ -11,7 +11,6 @@ import {
 } from "recharts";
 
 const DashboardChart = ({ transactions }) => {
-  // Default to "day" view
   const [granularity, setGranularity] = useState("day");
 
   const chartData = useMemo(() => {
@@ -21,11 +20,10 @@ const DashboardChart = ({ transactions }) => {
 
     transactions.forEach((t) => {
       const date = new Date(t.date);
-      let key;      // Unique ID for grouping
-      let label;    // X-Axis Label
-      let sortTime; // For sorting
+      let key;      
+      let label;    
+      let sortTime; 
 
-      // --- 1. Define Grouping Logic ---
       if (granularity === "day") {
         key = date.toISOString().split("T")[0];
         label = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -33,8 +31,8 @@ const DashboardChart = ({ transactions }) => {
       } 
       else if (granularity === "week") {
         const d = new Date(date);
-        const day = d.getDay(); // 0 is Sunday
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday start
+        const day = d.getDay(); 
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
         const weekStart = new Date(d.setDate(diff));
         weekStart.setHours(0,0,0,0);
         
@@ -48,12 +46,10 @@ const DashboardChart = ({ transactions }) => {
         sortTime = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
       }
 
-      // --- 2. Initialize Data Point ---
       if (!dataMap[key]) {
         dataMap[key] = { name: label, income: 0, expense: 0, sortTime: sortTime };
       }
       
-      // --- 3. Separate Income vs Expense ---
       if (t.type === 'income') {
         dataMap[key].income += t.amount;
       } else {
@@ -61,7 +57,6 @@ const DashboardChart = ({ transactions }) => {
       }
     });
 
-    // --- 4. Sort Chronologically ---
     return Object.values(dataMap).sort((a, b) => a.sortTime - b.sortTime);
 
   }, [transactions, granularity]);
@@ -95,18 +90,15 @@ const DashboardChart = ({ transactions }) => {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData}>
             <defs>
-              {/* Green Gradient for Income */}
               <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                 <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
               </linearGradient>
-              {/* Red Gradient for Expense */}
               <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
                 <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
               </linearGradient>
             </defs>
-            
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
             <XAxis 
               dataKey="name" 
@@ -130,14 +122,10 @@ const DashboardChart = ({ transactions }) => {
                 color: "#fff",
               }}
               itemStyle={{ fontSize: '12px' }}
-              formatter={(value, name) => [
-                `₹${value.toLocaleString()}`, 
-                name.charAt(0).toUpperCase() + name.slice(1)
-              ]}
+              formatter={(value, name) => [`₹${value.toLocaleString()}`, name.charAt(0).toUpperCase() + name.slice(1)]}
             />
             <Legend verticalAlign="top" height={36} iconType="circle" />
             
-            {/* Income Area (Green) */}
             <Area
               type="monotone"
               dataKey="income"
@@ -146,10 +134,9 @@ const DashboardChart = ({ transactions }) => {
               strokeWidth={3}
               fillOpacity={1}
               fill="url(#colorIncome)"
+              dot={{ r: 4, strokeWidth: 2 }} 
               animationDuration={800}
             />
-            
-            {/* Expense Area (Red) */}
             <Area
               type="monotone"
               dataKey="expense"
@@ -158,6 +145,7 @@ const DashboardChart = ({ transactions }) => {
               strokeWidth={3}
               fillOpacity={1}
               fill="url(#colorExpense)"
+              dot={{ r: 4, strokeWidth: 2 }}
               animationDuration={800}
             />
           </AreaChart>
