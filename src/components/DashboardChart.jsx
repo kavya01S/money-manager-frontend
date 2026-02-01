@@ -13,7 +13,6 @@ const DashboardChart = ({ transactions }) => {
   const [timeRange, setTimeRange] = useState("week"); // week, month, year
 
   // Group data based on time range
-  // Group data based on time range
   const chartData = useMemo(() => {
     if (!transactions.length) return [];
 
@@ -26,42 +25,54 @@ const DashboardChart = ({ transactions }) => {
 
       // Filter Logic
       if (timeRange === "week") {
-        // Show last 7 days
         const diffTime = Math.abs(today - date);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         if (diffDays <= 7) {
-          const dayName = date.toLocaleDateString("en-US", {
-            weekday: "short",
-          });
-          dataMap[dayName] = (dataMap[dayName] || 0) + amount;
+          // Key format: "YYYY-MM-DD" so we can sort easily later
+          const dayKey = date.toISOString().split("T")[0];
+          dataMap[dayKey] = (dataMap[dayKey] || 0) + amount;
         }
       } else if (timeRange === "month") {
-        // Show days of current month
         if (
           date.getMonth() === today.getMonth() &&
           date.getFullYear() === today.getFullYear()
         ) {
-          const dayNum = date.getDate();
+          const dayNum = date.getDate(); // Key: 1, 2, 3...
           dataMap[dayNum] = (dataMap[dayNum] || 0) + amount;
         }
       } else if (timeRange === "year") {
-        // Show months of current year
         if (date.getFullYear() === today.getFullYear()) {
-          const monthName = date.toLocaleDateString("en-US", {
-            month: "short",
-          });
-          dataMap[monthName] = (dataMap[monthName] || 0) + amount;
+          // Key: 0 (Jan), 1 (Feb)... easier to sort than strings
+          const monthIdx = date.getMonth();
+          dataMap[monthIdx] = (dataMap[monthIdx] || 0) + amount;
         }
       }
     });
 
-    // Convert Object to Array AND REVERSE IT (Oldest -> Newest)
-    return Object.keys(dataMap)
-      .map((key) => ({
-        name: key,
-        amount: dataMap[key],
-      }))
-      .reverse(); // <--- THIS IS THE MAGIC FIX
+    // Convert Object to Array and SORT IT properly
+    return (
+      Object.keys(dataMap)
+        .map((key) => {
+          // Convert keys back to readable labels for the chart
+          let label = key;
+          if (timeRange === "week") {
+            const d = new Date(key);
+            label = d.toLocaleDateString("en-US", { weekday: "short" });
+          } else if (timeRange === "year") {
+            const d = new Date();
+            d.setMonth(key);
+            label = d.toLocaleDateString("en-US", { month: "short" });
+          }
+
+          return {
+            originalKey: key, // Keep original for sorting
+            name: label,
+            amount: dataMap[key],
+          };
+        })
+        // The sort function: compares keys (Dates or Numbers)
+        .sort((a, b) => (a.originalKey > b.originalKey ? 1 : -1))
+    );
   }, [transactions, timeRange]);
 
   return (
