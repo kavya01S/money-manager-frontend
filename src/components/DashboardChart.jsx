@@ -7,12 +7,12 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
+  Legend
 } from "recharts";
 
 const DashboardChart = ({ transactions }) => {
-  // Internal state matches logic ('day', 'week', 'month'),
-  // but buttons will show 'Monthly', 'Weekly', 'Yearly'
+  // "day" = Daily view (for looking at a Month)
+  // "month" = Monthly view (for looking at a Year)
   const [granularity, setGranularity] = useState("day");
 
   const chartData = useMemo(() => {
@@ -21,50 +21,46 @@ const DashboardChart = ({ transactions }) => {
     const dataMap = {};
 
     transactions.forEach((t) => {
-      const date = new Date(t.date);
+      if (!t.date) return;
+
+      // STRICT STRING PARSING (Fixes Timezone/Empty Graph issues)
+      // We assume date comes as "YYYY-MM-DDTHH:mm:ss.sssZ"
+      const dateStr = t.date.split('T')[0]; // "2025-01-01"
+      const [year, month, day] = dateStr.split('-').map(Number);
+      
       let key, label, sortTime;
 
-      // --- LOGIC: "Monthly" View (Shows Daily breakdown) ---
       if (granularity === "day") {
-        key = date.toISOString().split("T")[0]; // YYYY-MM-DD
-        label = date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
-        sortTime = date.getTime();
-      }
-      // --- LOGIC: "Weekly" View ---
+        // Key: "2025-01-01"
+        key = dateStr; 
+        // Label: "Jan 1"
+        label = new Date(year, month - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        sortTime = new Date(year, month - 1, day).getTime();
+      } 
       else if (granularity === "week") {
-        const d = new Date(date);
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const weekStart = new Date(d.setDate(diff));
-        weekStart.setHours(0, 0, 0, 0);
-
-        key = weekStart.toISOString().split("T")[0];
+        // Calculate Week Start (Sunday) using UTC to stay consistent
+        const dateObj = new Date(year, month - 1, day);
+        const dayOfWeek = dateObj.getDay(); 
+        const diff = dateObj.getDate() - dayOfWeek;
+        const weekStart = new Date(dateObj.setDate(diff));
+        
+        key = weekStart.toISOString().split('T')[0];
         label = `Wk ${weekStart.getDate()} ${weekStart.toLocaleDateString("en-US", { month: "short" })}`;
         sortTime = weekStart.getTime();
-      }
-      // --- LOGIC: "Yearly" View (Shows Monthly breakdown) ---
+      } 
       else if (granularity === "month") {
-        key = `${date.getFullYear()}-${date.getMonth()}`;
-        label = date.toLocaleDateString("en-US", {
-          month: "short",
-          year: "2-digit",
-        });
-        sortTime = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+        // Key: "2025-01"
+        key = `${year}-${month}`;
+        // Label: "Jan 25"
+        label = new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+        sortTime = new Date(year, month - 1, 1).getTime();
       }
 
       if (!dataMap[key]) {
-        dataMap[key] = {
-          name: label,
-          income: 0,
-          expense: 0,
-          sortTime: sortTime,
-        };
+        dataMap[key] = { name: label, income: 0, expense: 0, sortTime: sortTime };
       }
 
-      if (t.type === "income") {
+      if (t.type === 'income') {
         dataMap[key].income += t.amount;
       } else {
         dataMap[key].expense += t.amount;
@@ -72,6 +68,7 @@ const DashboardChart = ({ transactions }) => {
     });
 
     return Object.values(dataMap).sort((a, b) => a.sortTime - b.sortTime);
+
   }, [transactions, granularity]);
 
   return (
@@ -80,44 +77,21 @@ const DashboardChart = ({ transactions }) => {
         <div>
           <h3 className="text-xl font-bold text-white">Income vs Expense</h3>
           <p className="text-xs text-slate-400">
-            {granularity === "day"
-              ? "Breakdown by Day (1-31)"
-              : granularity === "month"
-                ? "Breakdown by Month (Jan-Dec)"
-                : "Weekly Trends"}
+             {granularity === 'day' ? "Daily Breakdown (1-31)" : granularity === 'month' ? "Monthly Breakdown (Jan-Dec)" : "Weekly Trends"}
           </p>
         </div>
 
-        {/* --- BUTTONS RENAMED AS REQUESTED --- */}
         <div className="flex p-1 space-x-1 rounded-lg bg-slate-950">
-          <button
-            onClick={() => setGranularity("day")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all capitalize ${
-              granularity === "day"
-                ? "bg-blue-600 text-white shadow"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
+          <button onClick={() => setGranularity("day")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${granularity === "day" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>
             Monthly
           </button>
-          <button
-            onClick={() => setGranularity("week")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all capitalize ${
-              granularity === "week"
-                ? "bg-blue-600 text-white shadow"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
+          <button onClick={() => setGranularity("week")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${granularity === "week" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>
             Weekly
           </button>
-          <button
-            onClick={() => setGranularity("month")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all capitalize ${
-              granularity === "month"
-                ? "bg-blue-600 text-white shadow"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
+          <button onClick={() => setGranularity("month")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${granularity === "month" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>
             Yearly
           </button>
         </div>
@@ -136,61 +110,13 @@ const DashboardChart = ({ transactions }) => {
                 <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#1e293b"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="name"
-              stroke="#64748b"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-              minTickGap={30}
-            />
-            <YAxis
-              stroke="#64748b"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(value) => `₹${value}`}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#0f172a",
-                borderColor: "#1e293b",
-                color: "#fff",
-              }}
-              itemStyle={{ fontSize: "12px" }}
-              formatter={(value, name) => [`₹${value.toLocaleString()}`, name]}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+            <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} minTickGap={30} />
+            <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+            <Tooltip contentStyle={{ backgroundColor: "#0f172a", borderColor: "#1e293b", color: "#fff" }} itemStyle={{ fontSize: '12px' }} formatter={(value, name) => [`₹${value.toLocaleString()}`, name]} />
             <Legend verticalAlign="top" height={36} iconType="circle" />
-
-            <Area
-              type="monotone"
-              dataKey="income"
-              name="Income"
-              stroke="#10b981"
-              strokeWidth={3}
-              fillOpacity={1}
-              fill="url(#colorIncome)"
-              dot={{ r: 4, strokeWidth: 2, fill: "#10b981" }}
-              activeDot={{ r: 6 }}
-              animationDuration={800}
-            />
-            <Area
-              type="monotone"
-              dataKey="expense"
-              name="Expense"
-              stroke="#ef4444"
-              strokeWidth={3}
-              fillOpacity={1}
-              fill="url(#colorExpense)"
-              dot={{ r: 4, strokeWidth: 2, fill: "#ef4444" }}
-              activeDot={{ r: 6 }}
-              animationDuration={800}
-            />
+            <Area type="monotone" dataKey="income" name="Income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" dot={{ r: 4, strokeWidth: 2, fill: "#10b981" }} activeDot={{ r: 6 }} animationDuration={500} />
+            <Area type="monotone" dataKey="expense" name="Expense" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" dot={{ r: 4, strokeWidth: 2, fill: "#ef4444" }} activeDot={{ r: 6 }} animationDuration={500} />
           </AreaChart>
         </ResponsiveContainer>
       </div>

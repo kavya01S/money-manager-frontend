@@ -26,7 +26,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // --- Filter States ---
   const [filters, setFilters] = useState({
     division: "All",
     type: "All",
@@ -41,9 +40,8 @@ const Dashboard = () => {
       navigate("/login");
       return;
     }
-    const parsedUser = JSON.parse(storedUser);
-    setUser(parsedUser);
-    fetchTransactions(parsedUser.token);
+    setUser(JSON.parse(storedUser));
+    fetchTransactions(JSON.parse(storedUser).token);
   }, [navigate]);
 
   const fetchTransactions = async (token) => {
@@ -58,7 +56,6 @@ const Dashboard = () => {
     }
   };
 
-  // --- FILTER & SORT LOGIC ---
   const filteredTransactions = useMemo(() => {
     const result = transactions.filter((t) => {
       const matchDivision =
@@ -66,38 +63,30 @@ const Dashboard = () => {
       const matchType = filters.type === "All" || t.type === filters.type;
       const matchCategory =
         filters.category === "All" || t.category === filters.category;
-
       let matchDate = true;
       if (filters.startDate && filters.endDate) {
         const tDate = t.date.split("T")[0];
         matchDate = tDate >= filters.startDate && tDate <= filters.endDate;
       }
-
       return matchDivision && matchType && matchCategory && matchDate;
     });
-
     return result.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [transactions, filters]);
 
-  // --- STATS ---
   const { totalBalance, income, expense } = useMemo(() => {
-    let inc = 0;
-    let exp = 0;
-    filteredTransactions.forEach((t) => {
-      if (t.type === "income") inc += t.amount;
-      else exp += t.amount;
-    });
+    let inc = 0,
+      exp = 0;
+    filteredTransactions.forEach((t) =>
+      t.type === "income" ? (inc += t.amount) : (exp += t.amount),
+    );
     return { totalBalance: inc - exp, income: inc, expense: exp };
   }, [filteredTransactions]);
 
   const categories = [...new Set(transactions.map((t) => t.category))];
 
-  // --- ACTIONS ---
-  const handleFilterChange = (e) => {
+  const handleFilterChange = (e) =>
     setFilters({ ...filters, [e.target.name]: e.target.value });
-  };
-
-  const clearFilters = () => {
+  const clearFilters = () =>
     setFilters({
       division: "All",
       type: "All",
@@ -105,38 +94,27 @@ const Dashboard = () => {
       startDate: "",
       endDate: "",
     });
-  };
-
   const onLogout = () => {
     localStorage.removeItem("user");
     navigate("/login");
   };
 
   const handleDelete = async (id, date) => {
-    if (window.confirm("Are you sure you want to delete this?")) {
+    if (window.confirm("Delete this transaction?")) {
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
         await axios.delete(`${API_URL}/transactions/${id}`, config);
-        toast.success("Transaction Removed");
+        toast.success("Deleted");
         fetchTransactions(user.token);
       } catch (error) {
-        if (
-          error.response &&
-          error.response.data &&
-          error.response.data.error
-        ) {
-          toast.error(error.response.data.error);
-        } else {
-          toast.error("Delete failed");
-        }
+        toast.error(error.response?.data?.error || "Delete failed");
       }
     }
   };
 
-  // --- CSV EXPORT (Blob Method) ---
   const handleExport = () => {
     if (filteredTransactions.length === 0) {
-      toast.error("No data to export!");
+      toast.error("No data");
       return;
     }
     const headers = [
@@ -165,10 +143,7 @@ const Dashboard = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `fintrack_export_${new Date().toISOString().split("T")[0]}.csv`,
-    );
+    link.setAttribute("download", `fintrack_export.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -183,7 +158,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen font-sans text-white bg-slate-950 selection:bg-blue-500 selection:text-white">
-      {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md">
         <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -211,12 +185,10 @@ const Dashboard = () => {
       </nav>
 
       <main className="px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
-        {/* Stats Row */}
         <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
             className="relative p-6 overflow-hidden shadow-lg bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-blue-500/20"
           >
             <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -229,7 +201,6 @@ const Dashboard = () => {
               ₹ {totalBalance.toLocaleString()}
             </h3>
           </motion.div>
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -246,7 +217,6 @@ const Dashboard = () => {
               ₹ {income.toLocaleString()}
             </h3>
           </motion.div>
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -265,50 +235,46 @@ const Dashboard = () => {
           </motion.div>
         </div>
 
-        {/* Charts */}
         <div className="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-2">
           <DashboardChart transactions={filteredTransactions} />
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* --- GRID BASED FILTER BAR (Sorted Out) --- */}
+        {/* --- SIMPLE FLEX FILTER BAR --- */}
         <div className="p-4 mb-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
-          <div className="grid items-center grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {/* 1. Filter Label */}
-            <div className="flex items-center gap-2 text-slate-400 md:col-span-2 lg:col-span-1">
-              <Filter className="w-4 h-4" />
-              <span className="text-sm font-medium">Filter Transactions:</span>
-            </div>
-
-            {/* 2. Controls Grid */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:col-span-2 lg:col-span-3">
+          <div className="flex flex-col items-center justify-between gap-4 lg:flex-row">
+            <div className="flex flex-wrap items-center w-full gap-2 lg:w-auto">
+              <div className="flex items-center gap-2 mr-2 text-slate-400">
+                <Filter className="w-4 h-4" />
+                <span className="hidden text-sm font-medium md:block">
+                  Filters:
+                </span>
+              </div>
               <select
                 name="division"
                 value={filters.division}
                 onChange={handleFilterChange}
-                className="w-full h-10 px-2 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="All">All Divisions</option>
                 <option value="Office">Office</option>
                 <option value="Personal">Personal</option>
               </select>
-
               <select
                 name="type"
                 value={filters.type}
                 onChange={handleFilterChange}
-                className="w-full h-10 px-2 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="All">All Types</option>
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
               </select>
-
               <select
                 name="category"
                 value={filters.category}
                 onChange={handleFilterChange}
-                className="w-full h-10 px-2 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="All">All Categories</option>
                 {categories.map((c) => (
@@ -317,27 +283,21 @@ const Dashboard = () => {
                   </option>
                 ))}
               </select>
-
               <button
                 onClick={clearFilters}
-                className="flex items-center justify-center w-full h-10 transition-colors border rounded-lg bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-300"
-                title="Reset"
+                className="flex items-center justify-center w-10 h-10 border rounded-lg bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-300"
               >
-                <RefreshCw className="w-4 h-4" />{" "}
-                <span className="ml-2 text-xs sm:hidden">Reset</span>
+                <RefreshCw className="w-4 h-4" />
               </button>
             </div>
-
-            {/* 3. Action Buttons (Right Aligned) */}
-            <div className="flex justify-end gap-2 md:col-span-2 lg:col-span-1">
-              {/* Date Inputs (Compact for Desktop) */}
-              <div className="flex items-center hidden gap-1 p-1 mr-2 border rounded-lg bg-slate-900 border-slate-600 xl:flex">
+            <div className="flex flex-wrap items-center justify-end w-full gap-2 lg:w-auto">
+              <div className="flex items-center gap-1 p-1 border rounded-lg bg-slate-900 border-slate-600">
                 <input
                   type="date"
                   name="startDate"
                   value={filters.startDate}
                   onChange={handleFilterChange}
-                  className="w-24 h-8 px-1 text-xs bg-transparent outline-none text-slate-200"
+                  className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
                 />
                 <span className="text-slate-500">-</span>
                 <input
@@ -345,63 +305,40 @@ const Dashboard = () => {
                   name="endDate"
                   value={filters.endDate}
                   onChange={handleFilterChange}
-                  className="w-24 h-8 px-1 text-xs bg-transparent outline-none text-slate-200"
+                  className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
                 />
               </div>
-
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex items-center h-10 gap-2 px-3 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 active:scale-95"
+                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700"
               >
                 <Plus className="w-4 h-4" /> <span>Add</span>
               </button>
               <button
                 onClick={handleExport}
-                className="flex items-center h-10 gap-2 px-3 text-sm font-medium text-white rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95"
+                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700"
               >
                 <Download className="w-4 h-4" /> <span>CSV</span>
               </button>
             </div>
-
-            {/* Mobile Date Inputs (Visible only on smaller screens) */}
-            <div className="flex items-center justify-center gap-2 p-2 border rounded-lg bg-slate-900 border-slate-600 md:col-span-2 xl:hidden">
-              <span className="text-xs text-slate-400">Date Range:</span>
-              <input
-                type="date"
-                name="startDate"
-                value={filters.startDate}
-                onChange={handleFilterChange}
-                className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
-              />
-              <span className="text-slate-500">-</span>
-              <input
-                type="date"
-                name="endDate"
-                value={filters.endDate}
-                onChange={handleFilterChange}
-                className="h-8 px-2 text-sm bg-transparent outline-none text-slate-200"
-              />
-            </div>
           </div>
         </div>
 
-        {/* Transactions List */}
         <div className="p-6 border bg-slate-900/50 backdrop-blur-sm border-slate-800 rounded-2xl">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-white">
-              {filteredTransactions.length} Transactions Found
+              {filteredTransactions.length} Transactions
             </h3>
           </div>
-
           <div className="space-y-4">
             {filteredTransactions.length === 0 ? (
               <div className="py-12 text-center text-slate-500">
-                <p>No transactions found matching your filters.</p>
+                <p>No transactions found.</p>
                 <button
                   onClick={clearFilters}
                   className="mt-2 text-sm text-blue-500 hover:underline"
                 >
-                  Clear all filters
+                  Clear filters
                 </button>
               </div>
             ) : (
@@ -410,7 +347,7 @@ const Dashboard = () => {
                   key={t._id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center justify-between p-4 transition-colors border border-transparent bg-slate-800/50 hover:border-slate-700 hover:bg-slate-800 rounded-xl group"
+                  className="flex items-center justify-between p-4 border border-transparent bg-slate-800/50 hover:border-slate-700 hover:bg-slate-800 rounded-xl group"
                 >
                   <div className="flex items-center gap-4">
                     <div
@@ -449,8 +386,7 @@ const Dashboard = () => {
                     </div>
                     <button
                       onClick={() => handleDelete(t._id, t.date)}
-                      className="p-2 transition-all rounded-lg opacity-0 text-slate-600 hover:text-red-500 hover:bg-red-500/10 group-hover:opacity-100"
-                      title="Delete"
+                      className="p-2 rounded-lg opacity-0 text-slate-600 hover:text-red-500 hover:bg-red-500/10 group-hover:opacity-100"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -461,7 +397,6 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
-
       <TransactionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
