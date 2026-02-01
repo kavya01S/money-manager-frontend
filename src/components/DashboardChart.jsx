@@ -11,48 +11,52 @@ import {
 } from "recharts";
 
 const DashboardChart = ({ transactions }) => {
+  // 'day' = Daily (1-31), 'week' = Weekly, 'month' = Monthly (Jan-Dec)
   const [granularity, setGranularity] = useState("day");
 
   const chartData = useMemo(() => {
-    // DEBUG: Check console to ensure data arrives
-    console.log("Chart received:", transactions.length, "transactions");
-
     if (!transactions || transactions.length === 0) return [];
 
     const dataMap = {};
 
     transactions.forEach((t) => {
-      // Parse "2025-01-01" strictly from string
-      const dateStr = t.date.split("T")[0];
-      const [year, month, day] = dateStr.split("-").map(Number);
-
+      // Use Local Time (new Date) to match the dashboard list exactly
+      const date = new Date(t.date);
       let key, label, sortTime;
 
-      // "Monthly" Button -> Logic = 'day' (Show Days 1-31)
+      // 1. DAILY View (1-31)
       if (granularity === "day") {
-        key = dateStr;
-        label = `${month}/${day}`; // Simple label: 1/31
-        sortTime = new Date(year, month - 1, day).getTime();
+        // Key: YYYY-MM-DD (Local)
+        key = date.toLocaleDateString("en-CA"); // 'en-CA' gives YYYY-MM-DD in local time
+        label = date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+        sortTime = date.getTime();
       }
-      // "Weekly" Button -> Logic = 'week'
+      // 2. WEEKLY View
       else if (granularity === "week") {
-        const d = new Date(year, month - 1, day);
-        const dayOfWeek = d.getDay();
-        const diff = d.getDate() - dayOfWeek;
-        const wkStart = new Date(d.setDate(diff));
-        key = wkStart.toISOString().split("T")[0];
-        label = `Wk ${wkStart.getDate()}`;
-        sortTime = wkStart.getTime();
+        const day = date.getDay();
+        const diff = date.getDate() - day; // Adjust to Sunday
+        const weekStart = new Date(date);
+        weekStart.setDate(diff);
+        weekStart.setHours(0, 0, 0, 0);
+
+        key = weekStart.toISOString();
+        label = `Wk ${weekStart.getDate()} ${weekStart.toLocaleDateString("en-US", { month: "short" })}`;
+        sortTime = weekStart.getTime();
       }
-      // "Yearly" Button -> Logic = 'month' (Show Jan-Dec)
+      // 3. MONTHLY View (Jan-Dec)
       else if (granularity === "month") {
-        key = `${year}-${month}`;
-        const dateObj = new Date(year, month - 1, 1);
-        label = dateObj.toLocaleDateString("en-US", {
+        key = `${date.getFullYear()}-${date.getMonth()}`;
+        label = date.toLocaleDateString("en-US", {
           month: "short",
           year: "2-digit",
         });
-        sortTime = dateObj.getTime();
+        // Sort by 1st of month
+        const sortDate = new Date(date);
+        sortDate.setDate(1);
+        sortTime = sortDate.getTime();
       }
 
       if (!dataMap[key])
@@ -71,14 +75,14 @@ const DashboardChart = ({ transactions }) => {
       <div className="flex flex-col items-center justify-between gap-4 mb-6 sm:flex-row">
         <div>
           <h3 className="text-xl font-bold text-white">Income vs Expense</h3>
-          <p className="text-xs text-slate-400">Trend Analysis</p>
+          <p className="text-xs text-slate-400">Time Scale Analysis</p>
         </div>
         <div className="flex p-1 rounded-lg bg-slate-950">
           <button
             onClick={() => setGranularity("day")}
             className={`px-3 py-1 text-xs font-medium rounded ${granularity === "day" ? "bg-blue-600 text-white" : "text-slate-400"}`}
           >
-            Monthly
+            Daily
           </button>
           <button
             onClick={() => setGranularity("week")}
@@ -90,7 +94,7 @@ const DashboardChart = ({ transactions }) => {
             onClick={() => setGranularity("month")}
             className={`px-3 py-1 text-xs font-medium rounded ${granularity === "month" ? "bg-blue-600 text-white" : "text-slate-400"}`}
           >
-            Yearly
+            Monthly
           </button>
         </div>
       </div>
@@ -127,6 +131,7 @@ const DashboardChart = ({ transactions }) => {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
+                tickFormatter={(value) => `₹${value}`}
               />
               <Tooltip
                 contentStyle={{
@@ -136,7 +141,6 @@ const DashboardChart = ({ transactions }) => {
                 }}
               />
               <Legend verticalAlign="top" height={36} />
-              {/* Force dots to appear with r:6 */}
               <Area
                 type="monotone"
                 dataKey="income"
@@ -144,7 +148,7 @@ const DashboardChart = ({ transactions }) => {
                 stroke="#10b981"
                 strokeWidth={3}
                 fill="url(#colorIncome)"
-                dot={{ r: 6, fill: "#10b981" }}
+                dot={{ r: 4, fill: "#10b981" }}
               />
               <Area
                 type="monotone"
@@ -153,7 +157,7 @@ const DashboardChart = ({ transactions }) => {
                 stroke="#ef4444"
                 strokeWidth={3}
                 fill="url(#colorExpense)"
-                dot={{ r: 6, fill: "#ef4444" }}
+                dot={{ r: 4, fill: "#ef4444" }}
               />
             </AreaChart>
           </ResponsiveContainer>
