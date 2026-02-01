@@ -342,18 +342,25 @@ const Dashboard = () => {
           </div>
 
           {/* Add Button */}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 font-medium text-white transition-colors bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 shadow-blue-500/20 whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" /> Add New
-          </button>
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
-          >
-            <span>📊</span> Export CSV
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Add New Button */}
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center justify-center h-10 gap-2 px-4 font-medium text-white transition-all bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 shadow-blue-500/20 active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New</span>
+            </button>
+
+            {/* Export CSV Button */}
+            <button
+              onClick={handleExport}
+              className="flex items-center justify-center h-10 gap-2 px-4 font-medium text-white transition-all rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 active:scale-95"
+            >
+              <span className="text-lg leading-none">📊</span>
+              <span>Export CSV</span>
+            </button>
+          </div>
         </div>
 
         {/* --- TRANSACTIONS LIST --- */}
