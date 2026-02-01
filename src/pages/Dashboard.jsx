@@ -11,9 +11,9 @@ import {
   TrendingUp,
   TrendingDown,
   Filter,
-  RefreshCcw,
-  Trash2,
   RefreshCw,
+  Trash2,
+  Download,
 } from "lucide-react";
 import TransactionModal from "../components/TransactionModal";
 import DashboardChart from "../components/DashboardChart";
@@ -36,7 +36,6 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    // 1. Check if user is logged in
     const storedUser = localStorage.getItem("user");
     if (!storedUser) {
       navigate("/login");
@@ -44,17 +43,12 @@ const Dashboard = () => {
     }
     const parsedUser = JSON.parse(storedUser);
     setUser(parsedUser);
-
-    // 2. Fetch Transactions
     fetchTransactions(parsedUser.token);
   }, [navigate]);
 
   const fetchTransactions = async (token) => {
     try {
-      const config = {
-        headers: { Authorization: `Bearer ${token}` },
-      };
-
+      const config = { headers: { Authorization: `Bearer ${token}` } };
       const response = await axios.get(`${API_URL}/transactions`, config);
       setTransactions(response.data.data);
       setLoading(false);
@@ -64,7 +58,7 @@ const Dashboard = () => {
     }
   };
 
-  // --- 1. FILTER LOGIC ---
+  // --- FILTER LOGIC ---
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
       const matchDivision =
@@ -75,9 +69,10 @@ const Dashboard = () => {
 
       let matchDate = true;
       if (filters.startDate && filters.endDate) {
-        const tDate = new Date(t.date);
-        const start = new Date(filters.startDate);
-        const end = new Date(filters.endDate);
+        // Set time to midnight for accurate date comparison
+        const tDate = new Date(t.date).setHours(0, 0, 0, 0);
+        const start = new Date(filters.startDate).setHours(0, 0, 0, 0);
+        const end = new Date(filters.endDate).setHours(23, 59, 59, 999);
         matchDate = tDate >= start && tDate <= end;
       }
 
@@ -85,7 +80,7 @@ const Dashboard = () => {
     });
   }, [transactions, filters]);
 
-  // --- 2. STATS CALCULATION ---
+  // --- STATS CALCULATION ---
   const { totalBalance, income, expense } = useMemo(() => {
     let inc = 0;
     let exp = 0;
@@ -96,10 +91,9 @@ const Dashboard = () => {
     return { totalBalance: inc - exp, income: inc, expense: exp };
   }, [filteredTransactions]);
 
-  // Extract unique categories for the dropdown
   const categories = [...new Set(transactions.map((t) => t.category))];
 
-  // --- 3. ACTIONS ---
+  // --- ACTIONS ---
   const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
@@ -127,7 +121,6 @@ const Dashboard = () => {
         toast.success("Transaction Removed");
         fetchTransactions(user.token);
       } catch (error) {
-        // Handle specific error from backend (12-hour rule)
         if (
           error.response &&
           error.response.data &&
@@ -143,17 +136,17 @@ const Dashboard = () => {
 
   const handleExport = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Date,Description,Category,Amount,Type\n";
+    csvContent += "Date,Description,Category,Amount,Type,Division\n";
 
     filteredTransactions.forEach((t) => {
-      const row = `${t.date.split("T")[0]},${t.description},${t.category},${t.amount},${t.type}`;
+      const row = `${t.date.split("T")[0]},${t.description},${t.category},${t.amount},${t.type},${t.division}`;
       csvContent += row + "\n";
     });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "financial_report.csv");
+    link.setAttribute("download", "fin_track_report.csv");
     document.body.appendChild(link);
     link.click();
   };
@@ -195,7 +188,7 @@ const Dashboard = () => {
       </nav>
 
       <main className="px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
-        {/* Stats Row */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -255,94 +248,98 @@ const Dashboard = () => {
           <CategoryPieChart transactions={filteredTransactions} />
         </div>
 
-        {/* --- FILTER & ACTION BAR (ALIGNED) --- */}
-        <div className="flex flex-col items-center justify-between gap-4 p-4 mb-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700 md:flex-row">
-          {/* LEFT: Filters */}
-          <div className="flex flex-wrap items-center w-full gap-3 md:w-auto">
-            <div className="flex items-center gap-2 text-slate-400">
-              <Filter className="w-4 h-4" />
-              <span className="hidden text-sm font-medium sm:block">
-                Filters:
-              </span>
+        {/* --- IMPROVED FILTER & ACTION BAR --- */}
+        {/* Uses Grid for perfect responsiveness and alignment */}
+        <div className="p-4 mb-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
+          <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
+            {/* Filters Group */}
+            <div className="flex flex-wrap items-center w-full gap-3 lg:w-auto">
+              <div className="flex items-center gap-2 mr-2 text-slate-400">
+                <Filter className="w-4 h-4" />
+                <span className="hidden text-sm font-medium md:block">
+                  Filters:
+                </span>
+              </div>
+
+              <select
+                name="division"
+                value={filters.division}
+                onChange={handleFilterChange}
+                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="All">All Divisions</option>
+                <option value="Office">Office</option>
+                <option value="Personal">Personal</option>
+              </select>
+
+              <select
+                name="type"
+                value={filters.type}
+                onChange={handleFilterChange}
+                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="All">All Types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+              </select>
+
+              <select
+                name="category"
+                value={filters.category}
+                onChange={handleFilterChange}
+                className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="All">All Categories</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  name="startDate"
+                  value={filters.startDate}
+                  onChange={handleFilterChange}
+                  className="w-32 h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-slate-500">-</span>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={filters.endDate}
+                  onChange={handleFilterChange}
+                  className="w-32 h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <button
+                onClick={clearFilters}
+                className="flex items-center justify-center w-10 h-10 transition-colors border rounded-lg bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-300"
+                title="Reset Filters"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
             </div>
 
-            <select
-              name="division"
-              value={filters.division}
-              onChange={handleFilterChange}
-              className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Divisions</option>
-              <option value="Office">Office</option>
-              <option value="Personal">Personal</option>
-            </select>
+            {/* Action Buttons Group (Right Aligned) */}
+            <div className="flex justify-end w-full gap-3 lg:w-auto">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 shadow-blue-500/20 active:scale-95"
+              >
+                <Plus className="w-4 h-4" /> <span>Add New</span>
+              </button>
 
-            <select
-              name="type"
-              value={filters.type}
-              onChange={handleFilterChange}
-              className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Types</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-
-            <select
-              name="category"
-              value={filters.category}
-              onChange={handleFilterChange}
-              className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Categories</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="date"
-              name="startDate"
-              value={filters.startDate}
-              onChange={handleFilterChange}
-              className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
-            />
-
-            <input
-              type="date"
-              name="endDate"
-              value={filters.endDate}
-              onChange={handleFilterChange}
-              className="h-10 px-3 text-sm border rounded-lg outline-none bg-slate-700 border-slate-600 text-slate-200 focus:ring-2 focus:ring-blue-500"
-            />
-
-            <button
-              onClick={clearFilters}
-              className="h-10 px-3 transition-colors border rounded-lg bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-300"
-              title="Reset Filters"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* RIGHT: Action Buttons */}
-          <div className="flex items-center justify-end w-full gap-3 md:w-auto">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 shadow-blue-500/20 active:scale-95 whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" /> <span>Add New</span>
-            </button>
-
-            <button
-              onClick={handleExport}
-              className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 active:scale-95 whitespace-nowrap"
-            >
-              <span className="text-lg leading-none">📊</span>
-              <span>Export CSV</span>
-            </button>
+              <button
+                onClick={handleExport}
+                className="flex items-center h-10 gap-2 px-4 text-sm font-medium text-white transition-all rounded-lg shadow-lg bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 active:scale-95"
+              >
+                <Download className="w-4 h-4" /> <span>Export CSV</span>
+              </button>
+            </div>
           </div>
         </div>
 
