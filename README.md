@@ -1,16 +1,53 @@
-# React + Vite
+# FinTrack - Client Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+FinTrack is a responsive financial analytics dashboard built to provide real-time insights into personal finance. This frontend application focuses on data visualization, secure state management, and robust data portability.
 
-Currently, two official plugins are available:
+## 🚀 Live Demo
+**Application:** https://money-manager-frontend-hazel.vercel.app
+**Video Walkthrough:** https://drive.google.com/file/d/1rrcGb1uYigelDqbdn_1vnHLXF8wW9h3Z/view?usp=drive_link
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠️ Tech Stack
+* **Framework:** React.js (Vite)
+* **Styling:** Tailwind CSS, Framer Motion (Animations)
+* **Charts:** Recharts (Time-series data visualization)
+* **HTTP Client:** Axios (with Interceptors)
+* **Icons:** Lucide React
 
-## React Compiler
+## 💡 Key Engineering Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Advanced Data Visualization
+* Implemented a dynamic **Time-Series Chart** that adapts granularity based on user selection:
+    * **Monthly View:** Shows daily breakdown (1st-31st).
+    * **Yearly View:** Shows monthly aggregates (Jan-Dec).
+* **Solved Edge Case:** Fixed rendering issues for sparse datasets (single data points) by implementing forced dot rendering in Area Charts.
 
-## Expanding the ESLint configuration
+### 2. Strict Data Filtering
+* Architected a **Timezone-Safe Filter Logic**. 
+* Instead of relying on browser local time, the app performs strict string-based comparisons (`YYYY-MM-DD`) to ensure transaction data remains accurate regardless of the user's location.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 3. Binary CSV Export
+* Replaced standard URI encoding with a **Binary Blob Strategy** for CSV exports.
+* This ensures that special characters, commas in descriptions, and large datasets are exported to Excel without formatting corruption.
+
+## ⚙️ Local Setup
+
+1.  Clone the repository:
+    ```bash
+    git clone [your-frontend-repo-link]
+    cd frontend
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Create a `.env` file in the root:
+    ```env
+    VITE_API_URL=http://localhost:5000/api
+    ```
+4.  Run the development server:
+    ```bash
+    npm run dev
+    ```
+
+---
+*Developed by Kavya S*
