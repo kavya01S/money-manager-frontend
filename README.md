@@ -2,8 +2,8 @@
 
 FinTrack is a responsive financial analytics dashboard built to provide real-time insights into personal finance. This frontend application focuses on data visualization, secure state management, and robust data portability.
 
-### Looking for the backend?
-**Backend repo:** https://github.com/kavya01S/money-manager-backend.git
+# ⚠️ Backend Repository
+**Looking for the API/Server Code?** 👉 [Click Here for the Backend Repository] https://github.com/kavya01S/money-manager-backend.git
 
 ## 🚀 Live Demo
 **Application:** https://money-manager-frontend-hazel.vercel.app
